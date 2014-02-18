@@ -49,7 +49,7 @@ process.load("DQM.Physics.topElectronID_cff")
 process.load('Configuration/StandardSequences/Reconstruction_cff')
 
 
-## output
+### output ###
 process.output = cms.OutputModule("PoolOutputModule",
   fileName       = cms.untracked.string('topDQM_production.root'),
   outputCommands = cms.untracked.vstring(
