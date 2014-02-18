@@ -2,6 +2,7 @@
 #define DataFormats_TestObjects_DeleteEarly_h
 
 //Comment for the git test
+//Comment for the git test
 
 // -*- C++ -*-
 //
