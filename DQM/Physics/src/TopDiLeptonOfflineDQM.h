@@ -19,6 +19,7 @@
 #include "FWCore/Utilities/interface/EDGetToken.h"
 #include "FWCore/Framework/interface/EDConsumerBase.h"
 #include "FWCore/Framework/interface/ConsumesCollector.h"
+#include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 /**
    \class   MonitorEnsemble TopDQMHelpers.h "DQM/Physics/interface/TopDQMHelpers.h"
 
@@ -68,7 +69,7 @@ namespace TopDiLeptonOffline {
     /// expected to be of type 'selectionPath:monitorPath' 
     std::string selectionPath(const std::string& label) const { return label.substr(0, label.find(':')); };  
     /// determine dileptonic decay channel 
-    DecayChannel decayChannel(const std::vector<const reco::Muon*>& muons, const std::vector<const reco::GsfElectron*>& elecs) const;
+    DecayChannel decayChannel(const std::vector<const reco::PFCandidate*>& muons, const std::vector<const reco::GsfElectron*>& elecs) const;
 
     /// set labels for event logging histograms
     void loggerBinLabels(std::string hist);
@@ -94,7 +95,7 @@ namespace TopDiLeptonOffline {
     /// input sources for monitoring
     //edm::InputTag elecs_, muons_, jets_; 
     edm::EDGetTokenT<edm::View<reco::Jet> >  jets_; 
-    edm::EDGetTokenT<edm::View<reco::Muon> > muons_;
+    edm::EDGetTokenT<edm::View<reco::PFCandidate> > muons_;
     edm::EDGetTokenT<edm::View<reco::GsfElectron> > elecs_;
 
     /// considers a vector of METs
@@ -130,9 +131,10 @@ namespace TopDiLeptonOffline {
     StringCutObjectSelector<reco::GsfElectron>* elecSelect_;
 
     /// extra isolation criterion on muon
-    StringCutObjectSelector<reco::Muon>* muonIso_;
+    StringCutObjectSelector<reco::PFCandidate, true>* muonIso_;
+    
     /// extra selection on muons
-    StringCutObjectSelector<reco::Muon>* muonSelect_;
+    StringCutObjectSelector<reco::PFCandidate, true>* muonSelect_;
 
     /// jetCorrector
     std::string jetCorrector_;
@@ -206,7 +208,7 @@ namespace TopDiLeptonOffline {
   }
   
   inline MonitorEnsemble::DecayChannel
-  MonitorEnsemble::decayChannel(const std::vector<const reco::Muon*>& muons, const std::vector<const reco::GsfElectron*>& elecs) const 
+  MonitorEnsemble::decayChannel(const std::vector<const reco::PFCandidate*>&  muons, const std::vector<const reco::GsfElectron*>& elecs) const   
   {
     DecayChannel type=NONE;
     if( muons.size()>1 ){ type=DIMUON; } else if( elecs.size()>1 ){ type=DIELEC; } else if( !elecs.empty() && !muons.empty() ){ type=ELECMU; }
@@ -243,7 +245,7 @@ namespace TopDiLeptonOffline {
 
     - jets  : of type reco::Jet
     - elecs : of type reco::GsfElectron
-    - muons : of type reco::Muon
+    - muons : of type reco::PFCandidate
     - met   : of type reco::MET
 
    These types have to be present as prefix of the selection step paramter _label_ separated 
@@ -322,7 +324,7 @@ class TopDiLeptonOfflineDQM : public edm::EDAnalyzer  {
   /// MonitoringEnsemble keeps an instance of the MonitorEnsemble class to 
   /// be filled _after_ each selection step
   std::map<std::string, std::pair<edm::ParameterSet, TopDiLeptonOffline::MonitorEnsemble*> > selection_;
-  SelectionStep<reco::Muon> * MuonStep;
+  SelectionStep<reco::PFCandidate> * MuonStep;
   SelectionStep<reco::GsfElectron> * ElectronStep;
   SelectionStep<reco::Vertex> * PvStep;
   SelectionStep<reco::MET> * METStep;
