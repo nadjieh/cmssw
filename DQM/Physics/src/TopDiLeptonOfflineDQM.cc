@@ -8,7 +8,6 @@
 #include "FWCore/Utilities/interface/EDGetToken.h"
 #include "FWCore/Framework/interface/ConsumesCollector.h"
 #include "FWCore/Framework/interface/EDConsumerBase.h"
-#include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 
 namespace TopDiLeptonOffline {
 
@@ -290,7 +289,6 @@ namespace TopDiLeptonOffline {
 
     edm::Handle<edm::View<reco::PFCandidate> > muons;
     edm::View<reco::PFCandidate>::const_iterator muonit;
-    reco::MuonRef muon;
     
     if( !event.getByToken(muons_, muons )) return;
 

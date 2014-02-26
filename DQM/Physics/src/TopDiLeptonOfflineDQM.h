@@ -11,15 +11,14 @@
 #include "DataFormats/Math/interface/deltaR.h"
 #include "DataFormats/JetReco/interface/Jet.h"
 #include "DQM/Physics/interface/TopDQMHelpers.h"
-#include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/METReco/interface/CaloMET.h"
+#include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 #include "JetMETCorrections/Objects/interface/JetCorrector.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "FWCore/Utilities/interface/EDGetToken.h"
 #include "FWCore/Framework/interface/EDConsumerBase.h"
 #include "FWCore/Framework/interface/ConsumesCollector.h"
-#include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 /**
    \class   MonitorEnsemble TopDQMHelpers.h "DQM/Physics/interface/TopDQMHelpers.h"
 
