@@ -8,6 +8,7 @@
 #include "FWCore/Utilities/interface/EDGetToken.h"
 #include "FWCore/Framework/interface/ConsumesCollector.h"
 #include "FWCore/Framework/interface/EDConsumerBase.h"
+
 using namespace std;
 namespace TopSingleLepton {
 
@@ -23,7 +24,7 @@ namespace TopSingleLepton {
   {
     // sources have to be given; this PSet is not optional
     edm::ParameterSet sources=cfg.getParameter<edm::ParameterSet>("sources");
-    muons_ = iC.consumes<edm::View<reco::Muon> >(sources.getParameter<edm::InputTag>("muons"));
+    muons_ = iC.consumes<edm::View<reco::PFCandidate> >(sources.getParameter<edm::InputTag>("muons"));    
     elecs_ = iC.consumes<edm::View<reco::GsfElectron> >(sources.getParameter<edm::InputTag>("elecs"));
     pvs_ = iC.consumes<edm::View<reco::Vertex> >(sources.getParameter<edm::InputTag>("pvs"));
     jets_ = iC.consumes<edm::View<reco::Jet> >(sources.getParameter<edm::InputTag>("jets"));
@@ -66,12 +67,12 @@ namespace TopSingleLepton {
       // select is optional; in case it's not found no
       // selection will be applied
       if( muonExtras.existsAs<std::string>("select") ){
-	muonSelect_= new StringCutObjectSelector<reco::Muon>(muonExtras.getParameter<std::string>("select"));
+	muonSelect_= new StringCutObjectSelector<reco::PFCandidate>(muonExtras.getParameter<std::string>("select"));
       }
       // isolation is optional; in case it's not found no
       // isolation will be applied
       if( muonExtras.existsAs<std::string>("isolation") ){
-	muonIso_= new StringCutObjectSelector<reco::Muon>(muonExtras.getParameter<std::string>("isolation"));
+	muonIso_= new StringCutObjectSelector<reco::PFCandidate>(muonExtras.getParameter<std::string>("isolation"));
       }
     }
 
@@ -199,8 +200,8 @@ namespace TopSingleLepton {
     // --- [VERBOSE] --- //
     // eta of the leading muon
     hists_["muonEta_"    ] = store_->book1D("MuonEta"    , "#eta(#mu)"        ,     30,    -3.,      3.);
-    // std isolation variable of the leading muon
-    hists_["muonRelIso_" ] = store_->book1D("MuonRelIso" , "Iso_{Rel}(#mu)"   ,     50,     0.,      1.);
+    // relative isolation of the candidate muon (depending on the decay channel)
+    hists_["muonRelIso_"  ] = store_->book1D("MuonRelIso"  , "Iso_{Rel}(#mu) (#Delta#beta Corrected)" , 50, 0.,1.);
     // eta of the leading electron
     hists_["elecEta_"    ] = store_->book1D("ElecEta"    , "#eta(e)"          ,     30,    -3.,      3.);
     // std isolation variable of the leading electron
@@ -213,15 +214,15 @@ namespace TopSingleLepton {
     hists_["jet1Eta_"    ] = store_->book1D("Jet1Eta"    , "#eta_{L2L3}(jet1)",     60,     -3.,     3.);   
     // pt of the 1. leading jet (corrected to L2+L3)
     hists_["jet1Pt_"     ] = store_->book1D("Jet1Pt"     , "pt_{L2L3}(jet1)"  ,     60,     0.,    300.);   
-   // eta of the 2. leading jet (corrected to L2+L3)
+    // eta of the 2. leading jet (corrected to L2+L3)
     hists_["jet2Eta_"    ] = store_->book1D("Jet2Eta"    , "#eta_{L2L3}(jet2)",     60,     -3.,     3.);   
     // pt of the 2. leading jet (corrected to L2+L3)
     hists_["jet2Pt_"     ] = store_->book1D("Jet2Pt"     , "pt_{L2L3}(jet2)"  ,     60,     0.,    300.);   
-   // eta of the 3. leading jet (corrected to L2+L3)
+    // eta of the 3. leading jet (corrected to L2+L3)
     hists_["jet3Eta_"    ] = store_->book1D("Jet3Eta"    , "#eta_{L2L3}(jet3)",     60,     -3.,     3.);   
     // pt of the 3. leading jet (corrected to L2+L3)
     hists_["jet3Pt_"     ] = store_->book1D("Jet3Pt"     , "pt_{L2L3}(jet3)"  ,     60,     0.,    300.);   
-   // eta of the 4. leading jet (corrected to L2+L3)
+    // eta of the 4. leading jet (corrected to L2+L3)
     hists_["jet4Eta_"    ] = store_->book1D("Jet4Eta"    , "#eta_{L2L3}(jet4)",     60,     -3.,     3.);   
     // pt of the 4. leading jet (corrected to L2+L3)
     hists_["jet4Pt_"     ] = store_->book1D("Jet4Pt"     , "pt_{L2L3}(jet4)"  ,     60,     0.,    300.);
@@ -240,10 +241,12 @@ namespace TopSingleLepton {
     if( verbosity_==VERBOSE) return;
 
     // --- [DEBUG] --- //
-    // relative muon isolation in tracker for the leading muon
-    hists_["muonTrkIso_" ] = store_->book1D("MuonTrkIso" , "Iso_{Trk}(#mu)"   ,     50,     0.,      1.);
-    // relative muon isolation in ecal+hcal for the leading muon
-    hists_["muonCalIso_" ] = store_->book1D("MuonCalIso" , "Iso_{Ecal}(#mu)"  ,     50,     0.,      1.);
+    // charged hadron isolation component of the candidate muon (depending on the decay channel)
+    hists_["muonChHadIso_"] = store_->book1D("MuonChHadIsoComp"  , "ChHad_{IsoComponent}(#mu)" ,       50, 0., 5.);
+    // neutral hadron isolation component of the candidate muon (depending on the decay channel)
+    hists_["muonNeHadIso_"] = store_->book1D("MuonNeHadIsoComp"  , "NeHad_{IsoComponent}(#mu)" ,       50, 0., 5.);
+    // photon isolation component of the candidate muon (depending on the decay channel)
+    hists_["muonPhIso_"   ] = store_->book1D("MuonPhIsoComp"  , "Photon_{IsoComponent}(#mu)"   ,       50, 0., 5.);
     // relative electron isolation in tracker for the leading electron
     hists_["elecTrkIso_" ] = store_->book1D("ElecTrkIso" , "Iso_{Trk}(e)"     ,     50,     0.,      1.);
     // relative electron isolation in ecal+hcal for the leading electron
@@ -384,28 +387,42 @@ namespace TopSingleLepton {
     // fill monitoring plots for muons
     unsigned int mMult=0, mMultIso=0;
 
-    edm::Handle<edm::View<reco::Muon> > muons;
-    if( !event.getByToken(muons_, muons) ) return;
+    edm::Handle<edm::View<reco::PFCandidate> > muons;
+    edm::View<reco::PFCandidate>::const_iterator muonit;
 
-    for(edm::View<reco::Muon>::const_iterator muon=muons->begin(); muon!=muons->end(); ++muon){
+    if( !event.getByToken(muons_, muons )) return;
+
+    for(edm::View<reco::PFCandidate>::const_iterator muonit = muons->begin(); muonit != muons->end(); ++muonit){ 
+      
+      if(muonit->muonRef().isNull()) continue ;
+      reco::MuonRef muon = muonit->muonRef();
+
       // restrict to globalMuons
       if( muon->isGlobalMuon() ){
-	fill("muonDelZ_" , muon->globalTrack()->vz());
-	fill("muonDelXY_", muon->globalTrack()->vx(), muon->globalTrack()->vy());
-	// apply preselection
-	if(!muonSelect_ || (*muonSelect_)(*muon)){
-	  double isolationTrk = muon->pt()/(muon->pt()+muon->isolationR03().sumPt);
-	  double isolationCal = muon->pt()/(muon->pt()+muon->isolationR03().emEt+muon->isolationR03().hadEt);
-	  double isolationRel = (muon->isolationR03().sumPt+muon->isolationR03().emEt+muon->isolationR03().hadEt)/muon->pt();
+	fill("muonDelZ_" , muon->innerTrack()->vz());                            // CB using inner track!
+	fill("muonDelXY_", muon->innerTrack()->vx(), muon->innerTrack()->vy());
+
+ 	// apply preselection
+	if(!muonSelect_ || (*muonSelect_)(*muonit)){
+
+	  double chHadPt = muon->pfIsolationR04().sumChargedHadronPt; 
+	  double neHadEt = muon->pfIsolationR04().sumNeutralHadronEt;
+	  double phoEt   = muon->pfIsolationR04().sumPhotonEt; 
+
+	  double pfRelIso = (chHadPt + max(0.,neHadEt + phoEt - 0.5*muon->pfIsolationR04().sumPUPt) ) / muon->pt();      // CB dBeta corrected iso!
+
 	  if( mMult==0 ){
 	    // restrict to leading muon
 	    fill("muonPt_"     , muon->pt() );
 	    fill("muonEta_"    , muon->eta());
-	    fill("muonRelIso_" , isolationRel );
-	    fill("muonTrkIso_" , isolationTrk );
-	    fill("muonCalIso_" , isolationCal );
+
+	    fill("muonRelIso_" , pfRelIso);
+	    
+	    fill("muonChHadIso_",chHadPt);
+	    fill("muonNeHadIso_",neHadEt);
+	    fill("muonPhIso_"   ,phoEt);
 	  }
-	   ++mMult; if(!muonIso_ || (*muonIso_)(*muon)) ++mMultIso;
+	   ++mMult; if(!muonIso_ || (*muonIso_)(*muonit)) ++mMultIso;
 	}
       }
     }
@@ -627,7 +644,7 @@ TopSingleLeptonDQM::TopSingleLeptonDQM(const edm::ParameterSet& cfg): vertexSele
     std::string key = selectionStep(*selIt), type = objectType(*selIt);
     if(selection_.find(key)!=selection_.end()){
       if(type=="muons"){
-		MuonStep = new SelectionStep<reco::Muon>(selection_[key].first, consumesCollector());
+		MuonStep = new SelectionStep<reco::PFCandidate>(selection_[key].first, consumesCollector());
       } 
       if(type=="elecs"){
       		ElectronStep = new SelectionStep<reco::GsfElectron>(selection_[key].first, consumesCollector());
@@ -676,7 +693,6 @@ TopSingleLeptonDQM::analyze(const edm::Event& event, const edm::EventSetup& setu
 	selection_[key].second->fill(event, setup);
       }
       if(type=="muons" && MuonStep != 0){
-//	SelectionStep<reco::Muon> step(selection_[key].first, consumesCollector());
 	if(MuonStep->select(event)){ ++passed;
     //      cout<<"selected event! "<<selection_[key].second<<endl;
 	  selection_[key].second->fill(event, setup);

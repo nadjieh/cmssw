@@ -10,9 +10,9 @@
 
 #include "DataFormats/JetReco/interface/Jet.h"
 #include "DQM/Physics/interface/TopDQMHelpers.h"
-#include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/METReco/interface/CaloMET.h"
+#include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 #include "JetMETCorrections/Objects/interface/JetCorrector.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
@@ -85,7 +85,7 @@ namespace TopSingleLepton {
     std::vector<edm::EDGetTokenT<edm::View<reco::MET> > > mets_;
     /// input sources for monitoring
     edm::EDGetTokenT<edm::View<reco::Jet> >  jets_; 
-    edm::EDGetTokenT<edm::View<reco::Muon> > muons_;
+    edm::EDGetTokenT<edm::View<reco::PFCandidate> > muons_;
     edm::EDGetTokenT<edm::View<reco::GsfElectron> > elecs_;
     edm::EDGetTokenT<edm::View<reco::Vertex> > pvs_;
     /// trigger table
@@ -116,9 +116,10 @@ namespace TopSingleLepton {
     StringCutObjectSelector<reco::Vertex>* pvSelect_;
 
     /// extra isolation criterion on muon
-    StringCutObjectSelector<reco::Muon>* muonIso_;
+    StringCutObjectSelector<reco::PFCandidate>* muonIso_;
+    
     /// extra selection on muons
-    StringCutObjectSelector<reco::Muon>* muonSelect_;
+    StringCutObjectSelector<reco::PFCandidate>* muonSelect_;
 
     /// jetCorrector
     std::string jetCorrector_;
@@ -202,7 +203,7 @@ namespace TopSingleLepton {
 
     - jets  : of type reco::Jet (jets), reco::CaloJet (jets/calo) or reco::PFJet (jets/pflow)
     - elecs : of type reco::GsfElectron
-    - muons : of type reco::Muon
+    - muons : of type reco::PFCandidate
     - met   : of type reco::MET
 
    These types have to be present as prefix of the selection step paramter _label_ separated
@@ -272,7 +273,7 @@ class TopSingleLeptonDQM : public edm::EDAnalyzer  {
   /// MonitoringEnsemble keeps an instance of the MonitorEnsemble class to
   /// be filled _after_ each selection step
   std::map<std::string, std::pair<edm::ParameterSet, TopSingleLepton::MonitorEnsemble*> > selection_;
-  SelectionStep<reco::Muon> * MuonStep;
+  SelectionStep<reco::PFCandidate> * MuonStep;
   SelectionStep<reco::GsfElectron> * ElectronStep;
   SelectionStep<reco::Vertex> * PvStep;
   SelectionStep<reco::MET> * METStep;
