@@ -64,7 +64,7 @@ ElectronIdMVAProducer::ElectronIdMVAProducer(const edm::ParameterSet& iConfig) {
         verbose_ = iConfig.getUntrackedParameter<bool>("verbose", false);
 	vertexToken_ = consumes<reco::VertexCollection>(iConfig.getParameter<edm::InputTag>("vertexTag"));
 	electronToken_ = consumes<reco::GsfElectronCollection>(iConfig.getParameter<edm::InputTag>("electronTag"));
-	eventrhoToken_ = consumes<double>(edm::InputTag("kt6PFJets", "rho"));
+	eventrhoToken_ = consumes<double>(edm::InputTag("fixedGridRhoFastjetAll"));
         reducedEBRecHitCollection_ = iConfig.getParameter<edm::InputTag>("reducedEBRecHitCollection");
         reducedEERecHitCollection_ = iConfig.getParameter<edm::InputTag>("reducedEERecHitCollection");
 	method_ = iConfig.getParameter<string>("method");

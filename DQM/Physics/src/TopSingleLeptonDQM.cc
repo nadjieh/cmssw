@@ -22,10 +22,11 @@ namespace TopSingleLepton {
   MonitorEnsemble::MonitorEnsemble(const char* label, const edm::ParameterSet& cfg, edm::ConsumesCollector && iC) : 
     label_(label), elecIso_(0), elecSelect_(0), pvSelect_(0), muonIso_(0), muonSelect_(0), jetIDSelect_(0), includeBTag_(false), lowerEdge_(-1.), upperEdge_(-1.), logged_(0)
   {
+
     // sources have to be given; this PSet is not optional
     edm::ParameterSet sources=cfg.getParameter<edm::ParameterSet>("sources");
     muons_ = iC.consumes<edm::View<reco::PFCandidate> >(sources.getParameter<edm::InputTag>("muons"));    
-    elecs_ = iC.consumes<edm::View<reco::GsfElectron> >(sources.getParameter<edm::InputTag>("elecs"));
+    elecs_ = iC.consumes<edm::View<reco::PFCandidate> >(sources.getParameter<edm::InputTag>("elecs"));
     pvs_ = iC.consumes<edm::View<reco::Vertex> >(sources.getParameter<edm::InputTag>("pvs"));
     jets_ = iC.consumes<edm::View<reco::Jet> >(sources.getParameter<edm::InputTag>("jets"));
     for (edm::InputTag const & tag : sources.getParameter<std::vector<edm::InputTag> >("mets"))
@@ -33,23 +34,26 @@ namespace TopSingleLepton {
     // electronExtras are optional; they may be omitted or 
     // empty
     if( cfg.existsAs<edm::ParameterSet>("elecExtras") ){
+      //rho for PF isolation with EA corrections
+      // eventrhoToken_ = iC.consumes<double>(edm::InputTag("fixedGridRhoFastjetAll"));
+
       edm::ParameterSet elecExtras=cfg.getParameter<edm::ParameterSet>("elecExtras");
       // select is optional; in case it's not found no
       // selection will be applied
       if( elecExtras.existsAs<std::string>("select") ){
-		elecSelect_= new StringCutObjectSelector<reco::GsfElectron>(elecExtras.getParameter<std::string>("select"));
+		elecSelect_= new StringCutObjectSelector<reco::PFCandidate>(elecExtras.getParameter<std::string>("select"));
       }
       // isolation is optional; in case it's not found no
       // isolation will be applied
       if( elecExtras.existsAs<std::string>("isolation") ){
-		elecIso_= new StringCutObjectSelector<reco::GsfElectron>(elecExtras.getParameter<std::string>("isolation"));
+		elecIso_= new StringCutObjectSelector<reco::PFCandidate>(elecExtras.getParameter<std::string>("isolation"));
       }
       // electronId is optional; in case it's not found the
       // InputTag will remain empty
       if( elecExtras.existsAs<edm::ParameterSet>("electronId") ){
 		edm::ParameterSet elecId=elecExtras.getParameter<edm::ParameterSet>("electronId");
 		electronId_= iC.consumes<edm::ValueMap<float> >(elecId.getParameter<edm::InputTag>("src"));
-		eidPattern_= elecId.getParameter<int>("pattern");
+		eidCutValue_= elecId.getParameter<double>("cutValue");
       }
     }
     // pvExtras are opetional; they may be omitted or empty
@@ -247,10 +251,16 @@ namespace TopSingleLepton {
     hists_["muonNeHadIso_"] = store_->book1D("MuonNeHadIsoComp"  , "NeHad_{IsoComponent}(#mu)" ,       50, 0., 5.);
     // photon isolation component of the candidate muon (depending on the decay channel)
     hists_["muonPhIso_"   ] = store_->book1D("MuonPhIsoComp"  , "Photon_{IsoComponent}(#mu)"   ,       50, 0., 5.);
+    // charged hadron isolation component of the candidate electron (depending on the decay channel)
+    hists_["elecChHadIso_"] = store_->book1D("ElectronChHadIsoComp"  , "ChHad_{IsoComponent}(e)" ,       50, 0., 5.);
+    // neutral hadron isolation component of the candidate electron (depending on the decay channel)
+    hists_["elecNeHadIso_"] = store_->book1D("ElectronNeHadIsoComp"  , "NeHad_{IsoComponent}(e)" ,       50, 0., 5.);
+    // photon isolation component of the candidate electron (depending on the decay channel)
+    hists_["elecPhIso_"   ] = store_->book1D("ElectronPhIsoComp"  , "Photon_{IsoComponent}(e)"   ,       50, 0., 5.);
     // relative electron isolation in tracker for the leading electron
-    hists_["elecTrkIso_" ] = store_->book1D("ElecTrkIso" , "Iso_{Trk}(e)"     ,     50,     0.,      1.);
+    //hists_["elecTrkIso_" ] = store_->book1D("ElecTrkIso" , "Iso_{Trk}(e)"     ,     50,     0.,      1.);
     // relative electron isolation in ecal+hcal for the leading electron
-    hists_["elecCalIso_" ] = store_->book1D("ElecCalIso" , "Iso_{Ecal}(e)"    ,     50,     0.,      1.);
+    //hists_["elecCalIso_" ] = store_->book1D("ElecCalIso" , "Iso_{Ecal}(e)"    ,     50,     0.,      1.);
     // multiplicity of btagged jets (for track counting high purity) with pt(L2L3)>30
     hists_["jetMultBPur_"] = store_->book1D("JetMultBPur", "N_{30}(TCHP)"    ,     10,     0.,     10.);   
     // btag discriminator for track counting high purity
@@ -338,8 +348,13 @@ namespace TopSingleLepton {
     ------------------------------------------------------------
     */
 
+    //fill rho for EA corrections
+    //edm::Handle<double> rho_;
+    //if( !event.getByToken(eventrhoToken_,rho_) ) return;
+    //double rho = *(rho_.product()); 
+
     // fill monitoring plots for electrons
-    edm::Handle<edm::View<reco::GsfElectron> > elecs;
+    edm::Handle<edm::View<reco::PFCandidate> > elecs;
     if( !event.getByToken(elecs_, elecs) ) return;
 
     // check availability of electron id
@@ -350,25 +365,33 @@ namespace TopSingleLepton {
 
     // loop electron collection
     unsigned int eMult=0, eMultIso=0;
-    std::vector<const reco::GsfElectron*> isoElecs;
-    for(edm::View<reco::GsfElectron>::const_iterator elec=elecs->begin(); elec!=elecs->end(); ++elec){
-      unsigned int idx = elec-elecs->begin();
+    std::vector<const reco::PFCandidate*> isoElecs;
+    for(edm::View<reco::PFCandidate>::const_iterator elec=elecs->begin(); elec!=elecs->end(); ++elec){
+      if(elec->gsfElectronRef().isNull()){ continue ;}
+      reco::GsfElectronRef gsf_el = elec->gsfElectronRef();
       // restrict to electrons with good electronId
-      if( electronId_.isUninitialized() ? true : ((int)(*electronId)[elecs->refAt(idx)] & eidPattern_) ){
+      if( electronId_.isUninitialized() ? true : ((double)(*electronId)[gsf_el] >= eidCutValue_) ){
 	if(!elecSelect_ || (*elecSelect_)(*elec)){
-	  double isolationTrk = elec->pt()/(elec->pt()+elec->dr03TkSumPt());
-	  double isolationCal = elec->pt()/(elec->pt()+elec->dr03EcalRecHitSumEt()+elec->dr03HcalTowerSumEt());
-	  double isolationRel = (elec->dr03TkSumPt()+elec->dr03EcalRecHitSumEt()+elec->dr03HcalTowerSumEt())/elec->pt();
+
+	  //	  double isolationTrk = elec->pt()/(elec->pt()+elec->dr03TkSumPt());
+	  //	  double isolationCal = elec->pt()/(elec->pt()+elec->dr03EcalRecHitSumEt()+elec->dr03HcalTowerSumEt());
+	  //	  double isolationRel = (elec->dr03TkSumPt()+elec->dr03EcalRecHitSumEt()+elec->dr03HcalTowerSumEt())/elec->pt();
+	  double el_ChHadIso = gsf_el->pfIsolationVariables().sumChargedHadronPt;
+	  double el_NeHadIso = gsf_el->pfIsolationVariables().sumNeutralHadronEt;
+	  double el_PhIso = gsf_el->pfIsolationVariables().sumPhotonEt;
+	  double el_pfRelIso = (el_ChHadIso + max(0.,el_NeHadIso + el_PhIso - 0.5*gsf_el->pfIsolationVariables().sumPUPt) ) / gsf_el->pt();
 	  if( eMult==0 ){
 	    // restrict to the leading electron
 	    fill("elecPt_" , elec->pt() );
 	    fill("elecEta_", elec->eta());
-	    fill("elecRelIso_" , isolationRel );
-	    fill("elecTrkIso_" , isolationTrk );
-	    fill("elecCalIso_" , isolationCal );
+	    fill("elecRelIso_" , el_pfRelIso );
+	    fill("elecChHadIso_" , el_ChHadIso );
+	    fill("elecNeHadIso_" , el_NeHadIso );
+	    fill("elecPhIso_" , el_PhIso );
 	  }
 	  // in addition to the multiplicity counter buffer the iso
 	  // electron candidates for later overlap check with jets
+	  //  double Aeff = 1.;
 	  ++eMult; if(!elecIso_ || (*elecIso_)(*elec)){ isoElecs.push_back(&(*elec)); ++eMultIso;}
 	}
       }
@@ -505,7 +528,7 @@ namespace TopSingleLepton {
       }
       // check for overlaps -- comment this to be synchronous with the selection
       //bool overlap=false;
-      //for(std::vector<const reco::GsfElectron*>::const_iterator elec=isoElecs.begin(); elec!=isoElecs.end(); ++elec){
+      //for(std::vector<const reco::PFCandidate*>::const_iterator elec=isoElecs.begin(); elec!=isoElecs.end(); ++elec){
       //  if(reco::deltaR((*elec)->eta(), (*elec)->phi(), jet->eta(), jet->phi())<0.4){overlap=true; break;}
       //} if(overlap){continue;}
 
@@ -647,7 +670,7 @@ TopSingleLeptonDQM::TopSingleLeptonDQM(const edm::ParameterSet& cfg): vertexSele
 		MuonStep = new SelectionStep<reco::PFCandidate>(selection_[key].first, consumesCollector());
       } 
       if(type=="elecs"){
-      		ElectronStep = new SelectionStep<reco::GsfElectron>(selection_[key].first, consumesCollector());
+      		ElectronStep = new SelectionStep<reco::PFCandidate>(selection_[key].first, consumesCollector());
       }
       if(type=="pvs"){
       		PvStep = new SelectionStep<reco::Vertex>(selection_[key].first, consumesCollector());
@@ -671,6 +694,7 @@ TopSingleLeptonDQM::TopSingleLeptonDQM(const edm::ParameterSet& cfg): vertexSele
 void
 TopSingleLeptonDQM::analyze(const edm::Event& event, const edm::EventSetup& setup)
 { 
+
   if(!triggerTable__.isUninitialized() ){
     edm::Handle<edm::TriggerResults> triggerTable;
     if(!event.getByToken(triggerTable__, triggerTable)) return;	
@@ -700,7 +724,7 @@ TopSingleLeptonDQM::analyze(const edm::Event& event, const edm::EventSetup& setu
       }
       //cout<<" apply selection steps 2"<<endl;
       if(type=="elecs" && ElectronStep != 0){
-	if(ElectronStep->select(event)){ ++passed;
+	if(ElectronStep->select(event,type)){ ++passed;
 	  selection_[key].second->fill(event, setup);
 	} else break;
       }

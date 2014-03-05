@@ -13,6 +13,7 @@
 #include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/Common/interface/ValueMap.h"
 #include "DataFormats/METReco/interface/CaloMET.h"
+#include "DataFormats/ParticleFlowCandidate/interface/PFCandidate.h"
 #include "JetMETCorrections/Objects/interface/JetCorrector.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"

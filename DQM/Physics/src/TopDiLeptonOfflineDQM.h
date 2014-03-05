@@ -68,7 +68,7 @@ namespace TopDiLeptonOffline {
     /// expected to be of type 'selectionPath:monitorPath' 
     std::string selectionPath(const std::string& label) const { return label.substr(0, label.find(':')); };  
     /// determine dileptonic decay channel 
-    DecayChannel decayChannel(const std::vector<const reco::PFCandidate*>& muons, const std::vector<const reco::GsfElectron*>& elecs) const;
+    DecayChannel decayChannel(const std::vector<const reco::PFCandidate*>& muons, const std::vector<const reco::PFCandidate*>& elecs) const;
 
     /// set labels for event logging histograms
     void loggerBinLabels(std::string hist);
@@ -95,7 +95,7 @@ namespace TopDiLeptonOffline {
     //edm::InputTag elecs_, muons_, jets_; 
     edm::EDGetTokenT<edm::View<reco::Jet> >  jets_; 
     edm::EDGetTokenT<edm::View<reco::PFCandidate> > muons_;
-    edm::EDGetTokenT<edm::View<reco::GsfElectron> > elecs_;
+    edm::EDGetTokenT<edm::View<reco::PFCandidate> > elecs_;
 
     /// considers a vector of METs
     //std::vector<edm::InputTag> mets_;
@@ -123,11 +123,13 @@ namespace TopDiLeptonOffline {
     ///  6: passes conversion rejection and Isolation
     ///  7: passes the whole selection
     /// As described on https://twiki.cern.ch/twiki/bin/view/CMS/SimpleCutBasedEleID
-    int eidPattern_;
+    //int eidPattern_;
+    //the cut for the MVA Id                                                                                                                                
+    double eidCutValue_;
     /// extra isolation criterion on electron
-    StringCutObjectSelector<reco::GsfElectron>* elecIso_;
+    StringCutObjectSelector<reco::PFCandidate>* elecIso_;
     /// extra selection on electrons
-    StringCutObjectSelector<reco::GsfElectron>* elecSelect_;
+    StringCutObjectSelector<reco::PFCandidate>* elecSelect_;
 
     /// extra isolation criterion on muon
     StringCutObjectSelector<reco::PFCandidate, true>* muonIso_;
@@ -207,7 +209,7 @@ namespace TopDiLeptonOffline {
   }
   
   inline MonitorEnsemble::DecayChannel
-  MonitorEnsemble::decayChannel(const std::vector<const reco::PFCandidate*>&  muons, const std::vector<const reco::GsfElectron*>& elecs) const   
+  MonitorEnsemble::decayChannel(const std::vector<const reco::PFCandidate*>&  muons, const std::vector<const reco::PFCandidate*>& elecs) const   
   {
     DecayChannel type=NONE;
     if( muons.size()>1 ){ type=DIMUON; } else if( elecs.size()>1 ){ type=DIELEC; } else if( !elecs.empty() && !muons.empty() ){ type=ELECMU; }
@@ -243,7 +245,7 @@ namespace TopDiLeptonOffline {
    MonitorEnsemble class. The following objects are supported for selection:
 
     - jets  : of type reco::Jet
-    - elecs : of type reco::GsfElectron
+    - elecs : of type reco::PFCandidate
     - muons : of type reco::PFCandidate
     - met   : of type reco::MET
 
@@ -324,7 +326,7 @@ class TopDiLeptonOfflineDQM : public edm::EDAnalyzer  {
   /// be filled _after_ each selection step
   std::map<std::string, std::pair<edm::ParameterSet, TopDiLeptonOffline::MonitorEnsemble*> > selection_;
   SelectionStep<reco::PFCandidate> * MuonStep;
-  SelectionStep<reco::GsfElectron> * ElectronStep;
+  SelectionStep<reco::PFCandidate> * ElectronStep;
   SelectionStep<reco::Vertex> * PvStep;
   SelectionStep<reco::MET> * METStep;
   std::vector<SelectionStep<reco::Jet> * > JetSteps;
