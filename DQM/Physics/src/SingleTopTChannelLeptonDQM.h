@@ -17,6 +17,9 @@
 #include "JetMETCorrections/Objects/interface/JetCorrector.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectron.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
+#include "FWCore/Framework/interface/ConsumesCollector.h"
+#include "FWCore/Framework/interface/EDConsumerBase.h"
+#include "FWCore/Utilities/interface/EDGetToken.h"
 
 /**
    \class   MonitorEnsemble TopDQMHelpers.h "DQM/Physics/interface/TopDQMHelpers.h"
@@ -44,7 +47,7 @@ namespace SingleTopTChannelLepton {
     
   public:
     /// default contructor
-    MonitorEnsemble(const char* label, const edm::ParameterSet& cfg, const edm::VParameterSet& vcfg);
+    MonitorEnsemble(const char* label, const edm::ParameterSet& cfg, const edm::VParameterSet& vcfg, edm::ConsumesCollector && iC );
     /// default destructor
     ~MonitorEnsemble(){};
     
@@ -81,18 +84,29 @@ namespace SingleTopTChannelLepton {
     /// instance label 
     std::string label_;
     /// considers a vector of METs
-    std::vector<edm::InputTag> mets_;
+    std::vector<edm::EDGetTokenT<edm::View<reco::MET> > > mets_;
+    //    std::vector<edm::InputTag> mets_;
     /// input sources for monitoring
-    edm::InputTag elecs_, elecs_gsf_, muons_, muons_reco_, jets_, pvs_; 
+    edm::EDGetTokenT<edm::View<reco::Jet> >  jets_; 
+    edm::EDGetTokenT<edm::View<reco::PFCandidate> > muons_;
+    edm::EDGetTokenT<edm::View<reco::GsfElectron> > elecs_gsf_;
+    edm::EDGetTokenT<edm::View<reco::PFCandidate> > elecs_;
+    edm::EDGetTokenT<edm::View<reco::Vertex> > pvs_;
+
+    //    edm::InputTag elecs_, elecs_gsf_, muons_, muons_reco_, jets_, pvs_; 
 
     /// trigger table
-    edm::InputTag triggerTable_;
+    //    edm::InputTag triggerTable_;
+    edm::EDGetTokenT<edm::TriggerResults> triggerTable_;
+
     /// trigger paths for monitoring, expected 
     /// to be of form signalPath:MonitorPath
     std::vector<std::string> triggerPaths_;
 
     /// electronId label
-    edm::InputTag electronId_;
+    //    edm::InputTag electronId_;
+    edm::EDGetTokenT<edm::ValueMap<float> > electronId_;
+
     /// electronId pattern we expect the following pattern:
     ///  0: fails
     ///  1: passes electron ID only
@@ -103,7 +117,9 @@ namespace SingleTopTChannelLepton {
     ///  6: passes conversion rejection and Isolation
     ///  7: passes the whole selection
     /// As described on https://twiki.cern.ch/twiki/bin/view/CMS/SimpleCutBasedEleID
-    int eidPattern_;
+    //int eidPattern_;
+    //the cut for the MVA Id                                                                                                                               
+    double eidCutValue_;
     /// extra isolation criterion on electron
     //    StringCutObjectSelector<reco::GsfElectron>* elecIso_;
     std::string elecIso_;
@@ -124,7 +140,9 @@ namespace SingleTopTChannelLepton {
     /// jetCorrector
     std::string jetCorrector_;
     /// jetID as an extra selection type 
-    edm::InputTag jetIDLabel_;
+    //    edm::InputTag jetIDLabel_;
+    edm::EDGetTokenT<reco::JetIDValueMap> jetIDLabel_;
+
     /// extra jetID selection on calo jets
     StringCutObjectSelector<reco::JetID>* jetIDSelect_;
     /// extra selection on jets (here given as std::string as it depends
@@ -134,7 +152,9 @@ namespace SingleTopTChannelLepton {
     /// to be determined from the cfg  
     bool includeBTag_;
     /// btag discriminator labels
-    edm::InputTag btagEff_, btagPur_, btagVtx_, btagCombVtx_;
+    //    edm::InputTag btagEff_, btagPur_, btagVtx_, btagCombVtx_;
+    edm::EDGetTokenT<reco::JetTagCollection> btagEff_, btagPur_, btagVtx_, btagCombVtx_;
+
     /// btag working points
     double btagEffWP_, btagPurWP_, btagVtxWP_, btagCombVtxWP_;
     /// mass window upper and lower edge
@@ -146,6 +166,7 @@ namespace SingleTopTChannelLepton {
     DQMStore* store_;
     /// histogram container  
     std::map<std::string,MonitorElement*> hists_;
+    edm::EDConsumerBase tmpConsumerBase;
   };
 
   inline void 
@@ -222,9 +243,26 @@ class SingleTopTChannelLeptonDQM : public edm::EDAnalyzer  {
   ~SingleTopTChannelLeptonDQM(){
     if( vertexSelect_ ) delete vertexSelect_;
     if( beamspotSelect_ ) delete beamspotSelect_;
-    //    if( selection_ ) delete selection_;
+    if( MuonStep) delete MuonStep;
+    if( PFMuonStep) delete PFMuonStep;
+    if( ElectronStep) delete ElectronStep;
+    if( PFElectronStep) delete PFElectronStep;
+    if( PvStep) delete PvStep;
+    for(unsigned int i = 0; i < JetSteps.size(); i++)
+      if( JetSteps[i]) delete JetSteps[i];
+    for(unsigned int i = 0; i < CaloJetSteps.size(); i++)
+      if( CaloJetSteps[i]) delete CaloJetSteps[i];
+    for(unsigned int i = 0; i < PFJetSteps.size(); i++)
+      if( PFJetSteps[i]) delete PFJetSteps[i];
+    if( METStep) delete METStep;
+
+
+
+
   };
-  
+
+
+
   /// do this during the event loop
   virtual void analyze(const edm::Event& event, const edm::EventSetup& setup);
     
@@ -238,16 +276,20 @@ class SingleTopTChannelLeptonDQM : public edm::EDAnalyzer  {
 
  private:
   /// trigger table
-  edm::InputTag triggerTable_;
+  //  edm::InputTag triggerTable_;
+  edm::EDGetTokenT<edm::TriggerResults> triggerTable__;
+
   /// trigger paths
   std::vector<std::string> triggerPaths_;
   /// primary vertex 
   edm::InputTag vertex_;
+  edm::EDGetTokenT<reco::Vertex> vertex__;
   /// string cut selector
   StringCutObjectSelector<reco::Vertex>* vertexSelect_;
 
   /// beamspot 
   edm::InputTag beamspot_;
+  edm::EDGetTokenT<reco::BeamSpot> beamspot__;
   /// string cut selector
   StringCutObjectSelector<reco::BeamSpot>* beamspotSelect_;
 
@@ -260,6 +302,17 @@ class SingleTopTChannelLeptonDQM : public edm::EDAnalyzer  {
   /// MonitoringEnsemble keeps an instance of the MonitorEnsemble class to 
   /// be filled _after_ each selection step
   std::map<std::string, std::pair<edm::ParameterSet, SingleTopTChannelLepton::MonitorEnsemble*> > selection_;
+  SelectionStep<reco::Muon> * MuonStep;
+  SelectionStep<reco::PFCandidate> * PFMuonStep;
+  SelectionStep<reco::GsfElectron> * ElectronStep;
+  SelectionStep<reco::PFCandidate> * PFElectronStep;
+  SelectionStep<reco::Vertex> * PvStep;
+  std::vector<SelectionStep<reco::Jet> * > JetSteps;
+  std::vector<SelectionStep<reco::CaloJet> * > CaloJetSteps;
+  std::vector<SelectionStep<reco::PFJet> * > PFJetSteps;
+  SelectionStep<reco::MET> * METStep;
+
+
 };
 
 #endif

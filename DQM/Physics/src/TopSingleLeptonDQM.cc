@@ -724,7 +724,7 @@ TopSingleLeptonDQM::analyze(const edm::Event& event, const edm::EventSetup& setu
       }
       //cout<<" apply selection steps 2"<<endl;
       if(type=="elecs" && ElectronStep != 0){
-	if(ElectronStep->select(event,type)){ ++passed;
+	if(ElectronStep->select(event,"electron")){ ++passed;
 	  selection_[key].second->fill(event, setup);
 	} else break;
       }

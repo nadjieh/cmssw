@@ -99,15 +99,15 @@ process.p      = cms.Path(
     #process.simpleEleId70cIso          *
 #    process.mvaTrigV0                     +
 #    process.mvaNonTrigV0               +
-    process.DiMuonDQM                  +
-    process.DiElectronDQM              +
-    process.ElecMuonDQM                +
-    process.topSingleMuonLooseDQM      +
-    process.topSingleMuonMediumDQM     +
-    process.topSingleElectronLooseDQM  +
-    process.topSingleElectronMediumDQM #+
-   # process.singleTopMuonMediumDQM     +
-  #  process.singleTopElectronMediumDQM
+#    process.DiMuonDQM                  +
+#    process.DiElectronDQM              +
+#    process.ElecMuonDQM                +
+#    process.topSingleMuonLooseDQM      +
+#    process.topSingleMuonMediumDQM     +
+#    process.topSingleElectronLooseDQM  +
+#    process.topSingleElectronMediumDQM #+
+#    process.singleTopMuonMediumDQM     +
+    process.singleTopElectronMediumDQM
 )
 
 process.endjob = cms.Path(
