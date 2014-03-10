@@ -106,7 +106,7 @@ process.p      = cms.Path(
 #    process.topSingleMuonMediumDQM     +
 #    process.topSingleElectronLooseDQM  +
 #    process.topSingleElectronMediumDQM #+
-#    process.singleTopMuonMediumDQM     +
+    process.singleTopMuonMediumDQM     +
     process.singleTopElectronMediumDQM
 )
 
