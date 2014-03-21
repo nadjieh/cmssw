@@ -131,7 +131,7 @@ topDiLeptonOfflineDQM = cms.EDAnalyzer("TopDiLeptonOfflineDQM",
     cms.PSet(
       label  = cms.string("muons:step0"),
       src    = cms.InputTag("pfIsolatedMuonsEI"),
-      select = cms.string(looseMuonCut + " && muonRef.pt > 20. && abs(muonRef.eta)<2.4"), # CB what to do with iso?
+      select = cms.string(looseMuonCut + looseIsoCut + " && muonRef.pt > 20. && abs(muonRef.eta)<2.4"), # CB what to do with iso? CD Added looseIso
       min    = cms.int32(2),
       max    = cms.int32(2),
     ),
@@ -568,7 +568,7 @@ ElecMuonDQM = cms.EDAnalyzer("TopDiLeptonOfflineDQM",
     cms.PSet(
       label  = cms.string("muons:step0"),
       src    = cms.InputTag("pfIsolatedMuonsEI"),
-      select = cms.string(looseMuonCut + " && muonRef.pt > 20. && abs(muonRef.eta)<2.4"), # CB what to do with iso?
+      select = cms.string(looseMuonCut + looseIsoCut + " && muonRef.pt > 20. && abs(muonRef.eta)<2.4"), # CB what to do with iso? CD Added looseIsoCut
       min    = cms.int32(1),
       max    = cms.int32(1),
     ),

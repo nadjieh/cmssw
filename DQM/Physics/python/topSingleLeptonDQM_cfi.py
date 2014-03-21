@@ -60,7 +60,7 @@ topSingleLeptonDQM = cms.EDAnalyzer("TopSingleLeptonDQM",
     muonExtras = cms.PSet(
       ## when omitted muon plots will be filled w/o additional pre-
       ## selection of the muon candidates                                                                                            
-      select = cms.string(looseMuonCut + " && pt>10 & abs(eta)<2.1"),
+      select = cms.string(looseMuonCut + " && pt>10 & abs(eta)<2.4"),
       ## when omitted isolated muon multiplicity plot will be equi-
       ## valent to inclusive muon multiplicity plot                                                    
       isolation = cms.string(looseIsoCut),
@@ -176,7 +176,7 @@ topSingleMuonLooseDQM = cms.EDAnalyzer("TopSingleLeptonDQM",
     muonExtras = cms.PSet(
       ## when omitted muon plots will be filled w/o additional pre-
       ## selection of the muon candidates                                                                                               
-      select = cms.string(looseMuonCut + " && pt > 10 & abs(eta)<2.1"),
+      select = cms.string(looseMuonCut + " && pt > 10 & abs(eta)<2.4"),
       ## when omitted isolated muon multiplicity plot will be equi-
       ## valent to inclusive muon multiplicity plot                                                    
       isolation = cms.string(looseIsoCut)                                               
@@ -267,7 +267,7 @@ topSingleMuonLooseDQM = cms.EDAnalyzer("TopSingleLeptonDQM",
     cms.PSet(
       label  = cms.string("muons:step0"),
       src    = cms.InputTag("pfIsolatedMuonsEI"),
-      select = cms.string(looseMuonCut + " && pt>10 & abs(eta)<2.1"), # CB what about iso?
+      select = cms.string(looseMuonCut + looseIsoCut + " && pt>10 & abs(eta)<2.4"), # CB what about iso? CD Added looseIso
       min    = cms.int32(1),
     ),
     cms.PSet(
@@ -448,7 +448,7 @@ topSingleMuonMediumDQM = cms.EDAnalyzer("TopSingleLeptonDQM",
     cms.PSet(
       label  = cms.string("muons:step0"),
       src    = cms.InputTag("pfIsolatedMuonsEI"),
-      select = cms.string(tightMuonCut + " && pt>20 & abs(eta)<2.1"), # CB what about iso?       
+      select = cms.string(tightMuonCut + tightIsoCut + " && pt>20 & abs(eta)<2.1"), # CB what about iso? CD Added tightIso      
       min    = cms.int32(1),
       max    = cms.int32(1),
     ),
