@@ -35,6 +35,8 @@
 #include "DataFormats/TrackerRecHit2D/interface/SiTrackerGSRecHit2D.h"
 #include "DataFormats/TrackerRecHit2D/interface/SiTrackerGSRecHit2DCollection.h"
 #include "DataFormats/Common/interface/OwnVector.h" 
+#include "DataFormats/TrackReco/interface/Track.h"
+#include "DataFormats/TrackReco/interface/TrackFwd.h"
 
 // PSimHits
 #include "SimDataFormats/CrossingFrame/interface/MixCollection.h"
@@ -46,6 +48,7 @@
 
 //C++
 #include <vector>
+#include <iostream>
 //
 // class declaration
 //
@@ -72,7 +75,7 @@ class RecHitAnalayzer : public edm::EDAnalyzer {
 
       // ----------member data ---------------------------
       edm::ParameterSet iPset;
-      edm::InputTag RecHits_label;
+      edm::InputTag RecHits_label, track_label;
       TFile * fout;
       TH1D * DX;
       TH1D * DY;
@@ -120,8 +123,9 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 {
    using namespace edm;
    using namespace std;
-   Handle<SiTrackerFullGSRecHit2DCollection> RecHits_handle;
-   iEvent.getByLabel(RecHits_label, RecHits_handle);
+
+   Handle<reco::TrackCollection> track_handle;
+   iEvent.getByLabel(track_label, track_handle);
    
    edm::Handle<CrossingFrame<PSimHit> > cf_simhit; 
    std::vector<const CrossingFrame<PSimHit> *> cf_simhitvec;
@@ -130,6 +134,39 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     	cf_simhitvec.push_back(cf_simhit.product());
    }
    std::auto_ptr<MixCollection<PSimHit> > allTrackerHits(new MixCollection<PSimHit>(cf_simhitvec)); 
+
+   reco::TrackCollection::const_iterator itTrk = track_handle->begin();
+   reco::TrackCollection::const_iterator trkEnd = track_handle->end();
+   for(; itTrk != trkEnd; itTrk++){
+	trackingRecHit_iterator itRecHit = itTrk->recHitsBegin();
+    	trackingRecHit_iterator rhEnd = itTrk->recHitsEnd();
+	for(; itRecHit != rhEnd; itRecHit++){
+		float xRec = (*itRecHit)->localPosition().x();
+                float yRec = (*itRecHit)->localPosition().y();
+                float zRec = (*itRecHit)->localPosition().z();
+		std::cout<<xRec <<"\t" << yRec <<"\t"<< zRec <<std::endl;
+		PSimHit* simHit = NULL;
+                int simHitNumber = (*itRecHit)->simhitId();
+		int simHitCounter = -1;
+		for (MixCollection<PSimHit>::iterator isim=(*allTrackerHits).begin(); isim!= (*allTrackerHits).end(); isim++) {
+	  		simHitCounter++;
+	  		if(simHitCounter == simHitNumber) {
+	    			simHit = const_cast<PSimHit*>(&(*isim));
+	    			break;
+	  		}
+		}    
+		float xSim = simHit->localPosition().x();
+		float ySim = simHit->localPosition().y();
+		float zSim = simHit->localPosition().z();
+		DX->Fill(xRec-xSim);
+		DY->Fill(yRec-ySim);			
+		DZ->Fill(zRec-zSim);
+	}
+   }
+/* 
+   Handle<SiTrackerFullGSRecHit2DCollection> RecHits_handle;
+   iEvent.getByLabel(RecHits_label, RecHits_handle);
+   
    
    // loop on RecHits
    unsigned int iRecHit = 0;
@@ -168,7 +205,8 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 			DZ->Fill(zRec-zSim);
 		}
 	}
-   }	
+   }i
+*/	
 }
 
 
