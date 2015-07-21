@@ -68,20 +68,15 @@ class RecHitAnalayzer : public edm::EDAnalyzer {
       virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
       virtual void endJob() override;
 
-      //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
-      //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
-      //virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
-      //virtual void endLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
 
       // ----------member data ---------------------------
       edm::ParameterSet iPset;
-      edm::InputTag RecHits_label, track_label;
+      edm::InputTag track_label, simhit_label;
+      int verbose;
       TFile * fout;
       TH1D * DX;
       TH1D * DY;
       TH1D * DZ;
-      // PSimHits
-      std::vector<edm::InputTag> trackerContainers;
 };
 
 //
@@ -95,11 +90,12 @@ class RecHitAnalayzer : public edm::EDAnalyzer {
 //
 // constructors and destructor
 //
-RecHitAnalayzer::RecHitAnalayzer(const edm::ParameterSet& iConfig): iPset(iConfig), RecHits_label( iPset.getParameter<edm::InputTag>("RecHits_label") )
+RecHitAnalayzer::RecHitAnalayzer(const edm::ParameterSet& iConfig): iPset(iConfig), 
+	track_label( iPset.getParameter<edm::InputTag>("track_label")),
+	simhit_label( iPset.getParameter<edm::InputTag>("simhit_label")),
+	verbose( iPset.getParameter<int>("verbose"))
 
 {
-  trackerContainers.clear();
-  trackerContainers = iPset.getParameter<std::vector<edm::InputTag> >("ROUList");
 
 }
 
@@ -127,33 +123,37 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
    Handle<reco::TrackCollection> track_handle;
    iEvent.getByLabel(track_label, track_handle);
    
-   edm::Handle<CrossingFrame<PSimHit> > cf_simhit; 
-   std::vector<const CrossingFrame<PSimHit> *> cf_simhitvec;
-   for(uint32_t i=0; i<trackerContainers.size(); i++){
-		iEvent.getByLabel(trackerContainers[i], cf_simhit);
-    	cf_simhitvec.push_back(cf_simhit.product());
-   }
-   std::auto_ptr<MixCollection<PSimHit> > allTrackerHits(new MixCollection<PSimHit>(cf_simhitvec)); 
-
+   edm::Handle<PSimHitCollection> simhit_handle; 
+   iEvent.getByLabel(simhit_label, simhit_handle);  
+   int iTrack = 0;
    reco::TrackCollection::const_iterator itTrk = track_handle->begin();
    reco::TrackCollection::const_iterator trkEnd = track_handle->end();
    for(; itTrk != trkEnd; itTrk++){
 	trackingRecHit_iterator itRecHit = itTrk->recHitsBegin();
     	trackingRecHit_iterator rhEnd = itTrk->recHitsEnd();
+	int iRechit = 0;
 	for(; itRecHit != rhEnd; itRecHit++){
 		float xRec = (*itRecHit)->localPosition().x();
                 float yRec = (*itRecHit)->localPosition().y();
                 float zRec = (*itRecHit)->localPosition().z();
-		std::cout<<xRec <<"\t" << yRec <<"\t"<< zRec <<std::endl;
+		if(verbose > 3)
+			std::cout<<"Track "<< iTrack<< " and RecHit "<<iRechit<<": "<<xRec <<"\t" << yRec <<"\t"<< zRec <<std::endl;
+		DetId detId = (*itRecHit)->geographicalId().rawId();
 		PSimHit* simHit = NULL;
-                int simHitNumber = (*itRecHit)->simhitId();
-		int simHitCounter = -1;
-		for (MixCollection<PSimHit>::iterator isim=(*allTrackerHits).begin(); isim!= (*allTrackerHits).end(); isim++) {
-	  		simHitCounter++;
-	  		if(simHitCounter == simHitNumber) {
-	    			simHit = const_cast<PSimHit*>(&(*isim));
-	    			break;
-	  		}
+		double minDR = 99999999;
+		PSimHitCollection::const_iterator itSimHit = simhit_handle->begin();
+		PSimHitCollection::const_iterator itSimHitEnd = simhit_handle->begin();
+		for (; itSimHit!= itSimHitEnd; itSimHitEnd++) {
+			if (detId == itSimHit->detUnitId()){
+				float xSim = itSimHit->localPosition().x();
+				float ySim = itSimHit->localPosition().y();
+				float zSim = itSimHit->localPosition().z();
+				double DR = sqrt(pow((xRec-xSim),2)+pow((yRec-ySim),2)+pow((zRec-zSim),2));
+				if(DR < minDR){
+					minDR = DR;
+					simHit = new PSimHit(*itSimHit);
+				}
+			}
 		}    
 		float xSim = simHit->localPosition().x();
 		float ySim = simHit->localPosition().y();
@@ -163,50 +163,6 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 		DZ->Fill(zRec-zSim);
 	}
    }
-/* 
-   Handle<SiTrackerFullGSRecHit2DCollection> RecHits_handle;
-   iEvent.getByLabel(RecHits_label, RecHits_handle);
-   
-   
-   // loop on RecHits
-   unsigned int iRecHit = 0;
-   const std::vector<DetId> theDetIds = RecHits_handle->ids();
-   // loop over detunits
-   for ( std::vector<DetId>::const_iterator iDetId = theDetIds.begin(); iDetId != theDetIds.end(); iDetId++ ) {
-   	unsigned int detid = (*iDetId).rawId();
-   	if(detid!=999999999){ // valid detector
-      	SiTrackerFullGSRecHit2DCollection::range RecHit_range = RecHits_handle->get((*iDetId));
-      	SiTrackerFullGSRecHit2DCollection::const_iterator RecHit_rangeIteratorBegin = RecHit_range.first;
-      	SiTrackerFullGSRecHit2DCollection::const_iterator RecHit_rangeIteratorEnd   = RecHit_range.second;
-      	SiTrackerFullGSRecHit2DCollection::const_iterator iterRecHit = RecHit_rangeIteratorBegin;
-      	// loop over RecHits of the same detector
-      	for(iterRecHit = RecHit_rangeIteratorBegin; iterRecHit != RecHit_rangeIteratorEnd; ++iterRecHit) {
-      		iRecHit++;
-			// search the associated original PSimHit
-			PSimHit* simHit = NULL;
-			int simHitNumber = (*iterRecHit).simhitId();
-			int simHitCounter = -1;
-			for (MixCollection<PSimHit>::iterator isim=(*allTrackerHits).begin(); isim!= (*allTrackerHits).end(); isim++) {
-	  			simHitCounter++;
-	  			if(simHitCounter == simHitNumber) {
-	    			simHit = const_cast<PSimHit*>(&(*isim));
-	    			break;
-	  			}
-			}    
-	
-			float xRec = (*iterRecHit).localPosition().x();
-			float yRec = (*iterRecHit).localPosition().y();
-			float zRec = (*iterRecHit).localPosition().z();
-			float xSim = simHit->localPosition().x();
-			float ySim = simHit->localPosition().y();
-			float zSim = simHit->localPosition().z();
-			DX->Fill(xRec-xSim);
-			DY->Fill(yRec-ySim);			
-			DZ->Fill(zRec-zSim);
-		}
-	}
-   }i
-*/	
 }
 
 
