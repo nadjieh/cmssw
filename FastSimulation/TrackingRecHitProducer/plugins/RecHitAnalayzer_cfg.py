@@ -23,7 +23,7 @@ process.GlobalTag.globaltag = "MCRUN2_74_V9::All"
 process.RecHitAnalysis = cms.EDAnalyzer("RecHitAnalayzer",
     track_label = cms.InputTag( "generalTracks"),
     simhit_label = cms.InputTag( "famosSimHits","TrackerHits"),
-    verbose = cms.int32(4),
+    verbose = cms.int32(1),
 )
 
 

@@ -133,17 +133,24 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     	trackingRecHit_iterator rhEnd = itTrk->recHitsEnd();
 	int iRechit = 0;
 	for(; itRecHit != rhEnd; itRecHit++){
+		if(!(*itRecHit)->isValid()) continue;
 		float xRec = (*itRecHit)->localPosition().x();
                 float yRec = (*itRecHit)->localPosition().y();
                 float zRec = (*itRecHit)->localPosition().z();
 		if(verbose > 3)
 			std::cout<<"Track "<< iTrack<< " and RecHit "<<iRechit<<": "<<xRec <<"\t" << yRec <<"\t"<< zRec <<std::endl;
+		if(verbose > 0)
+			std::cout<<"Looking for detId ";
 		DetId detId = (*itRecHit)->geographicalId().rawId();
-		PSimHit* simHit = NULL;
+		if(verbose > 0)
+			std::cout<<detId<<endl;
+		const PSimHit* simHit = NULL;
 		double minDR = 99999999;
 		PSimHitCollection::const_iterator itSimHit = simhit_handle->begin();
 		PSimHitCollection::const_iterator itSimHitEnd = simhit_handle->begin();
-		for (; itSimHit!= itSimHitEnd; itSimHitEnd++) {
+		for (; itSimHit!= itSimHitEnd; itSimHitEnd++) {		
+			if(verbose > 0)
+				std::cout<<"comparing detID with unitId: "<<detId << " vs. "<<itSimHit->detUnitId()<<endl;
 			if (detId == itSimHit->detUnitId()){
 				float xSim = itSimHit->localPosition().x();
 				float ySim = itSimHit->localPosition().y();
@@ -151,13 +158,22 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 				double DR = sqrt(pow((xRec-xSim),2)+pow((yRec-ySim),2)+pow((zRec-zSim),2));
 				if(DR < minDR){
 					minDR = DR;
-					simHit = new PSimHit(*itSimHit);
+					//simHit = new PSimHit(*itSimHit);
+					simHit = &(*itSimHit);
 				}
 			}
 		}    
+		if(verbose > 0)
+			std::cout<<"After simHit loop, th eclosest simHit is: "<<simHit<<endl;
+		if(simHit == NULL)
+			continue;
+		if(verbose > 0)
+			std::cout<<"simHit coordinates are: ";
 		float xSim = simHit->localPosition().x();
 		float ySim = simHit->localPosition().y();
 		float zSim = simHit->localPosition().z();
+		if(verbose > 0)
+			std::cout<<xSim<<"\t"<<ySim<<"\t"<<zSim<<endl;
 		DX->Fill(xRec-xSim);
 		DY->Fill(yRec-ySim);			
 		DZ->Fill(zRec-zSim);
