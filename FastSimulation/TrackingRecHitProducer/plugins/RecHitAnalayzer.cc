@@ -34,6 +34,7 @@
 //RecHits
 #include "DataFormats/TrackerRecHit2D/interface/SiTrackerGSRecHit2D.h"
 #include "DataFormats/TrackerRecHit2D/interface/SiTrackerGSRecHit2DCollection.h"
+#include "DataFormats/TrackerRecHit2D/interface/SiTrackerGSMatchedRecHit2D.h"
 #include "DataFormats/Common/interface/OwnVector.h" 
 #include "DataFormats/TrackReco/interface/Track.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
@@ -73,10 +74,14 @@ class RecHitAnalayzer : public edm::EDAnalyzer {
       edm::ParameterSet iPset;
       edm::InputTag track_label, simhit_label;
       int verbose;
+      bool isFS;
       TFile * fout;
       TH1D * DX;
       TH1D * DY;
       TH1D * DZ;
+      TH1D * DR;
+      TH1D * NSimRecSameDetId;
+      TH1D * Rfs;
 };
 
 //
@@ -93,10 +98,10 @@ class RecHitAnalayzer : public edm::EDAnalyzer {
 RecHitAnalayzer::RecHitAnalayzer(const edm::ParameterSet& iConfig): iPset(iConfig), 
 	track_label( iPset.getParameter<edm::InputTag>("track_label")),
 	simhit_label( iPset.getParameter<edm::InputTag>("simhit_label")),
-	verbose( iPset.getParameter<int>("verbose"))
+	verbose( iPset.getParameter<int>("verbose")),
+	isFS( iPset.getParameter<bool>("isFastSimOnly"))
 
 {
-
 }
 
 
@@ -139,24 +144,34 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
                 float zRec = (*itRecHit)->localPosition().z();
 		if(verbose > 3)
 			std::cout<<"Track "<< iTrack<< " and RecHit "<<iRechit<<": "<<xRec <<"\t" << yRec <<"\t"<< zRec <<std::endl;
-		if(verbose > 0)
+		if(verbose > 3)
 			std::cout<<"Looking for detId ";
 		DetId detId = (*itRecHit)->geographicalId().rawId();
-		if(verbose > 0)
+		if(verbose > 3)
 			std::cout<<detId<<endl;
 		const PSimHit* simHit = NULL;
 		double minDR = 99999999;
 		PSimHitCollection::const_iterator itSimHit = simhit_handle->begin();
-		PSimHitCollection::const_iterator itSimHitEnd = simhit_handle->begin();
-		for (; itSimHit!= itSimHitEnd; itSimHitEnd++) {		
-			if(verbose > 0)
+		PSimHitCollection::const_iterator itSimHitEnd = simhit_handle->end();
+		if(verbose > 3)
+                        std::cout<<simhit_handle->size()<<endl;
+		int nSimRecSameDetId = 0;
+		for (; itSimHit!= itSimHitEnd; itSimHit++) {		
+			if(verbose > 6)
 				std::cout<<"comparing detID with unitId: "<<detId << " vs. "<<itSimHit->detUnitId()<<endl;
 			if (detId == itSimHit->detUnitId()){
+				nSimRecSameDetId++;
 				float xSim = itSimHit->localPosition().x();
 				float ySim = itSimHit->localPosition().y();
 				float zSim = itSimHit->localPosition().z();
+				if(verbose > 0)
+					cout<<"SimHit Coordinates: "<<xSim <<"\t"<<ySim<<"\t"<<zSim<<endl;
 				double DR = sqrt(pow((xRec-xSim),2)+pow((yRec-ySim),2)+pow((zRec-zSim),2));
+				if(verbose > 0)
+					cout<< "DR is "<<DR<<endl;
 				if(DR < minDR){
+					if(verbose > 0)
+	                                        cout<< "keep new simHit :-) "<<endl;
 					minDR = DR;
 					//simHit = new PSimHit(*itSimHit);
 					simHit = &(*itSimHit);
@@ -164,7 +179,20 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 			}
 		}    
 		if(verbose > 0)
-			std::cout<<"After simHit loop, th eclosest simHit is: "<<simHit<<endl;
+			std::cout<<"After simHit loop, the closest simHit is: "<<simHit<<endl;
+		if(isFS){
+			const SiTrackerGSMatchedRecHit2D * rechit = (const SiTrackerGSMatchedRecHit2D*) (*itRecHit);
+			if(verbose > 0){
+				cout<<"From SiTrackerGSMatched:\n";
+				if(rechit->isMatched()) {
+					cout<<"\tThe RecHit is Matched with SimHit ======= "<<endl;
+					cout<<"position: "<<rechit->localPosition().x()<<"\t"<<rechit->localPosition().y()<<"\t"<<rechit->localPosition().z()<<endl;
+				} else  cout<<"\tThe RecHit is NOT Matched with SimHit"<<endl;
+			}
+			if(rechit->isMatched()){
+				Rfs->Fill(sqrt(pow(rechit->localPosition().x(),2)+pow(rechit->localPosition().y(),2)+pow(rechit->localPosition().z(),2)));
+			}
+		}
 		if(simHit == NULL)
 			continue;
 		if(verbose > 0)
@@ -177,8 +205,14 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 		DX->Fill(xRec-xSim);
 		DY->Fill(yRec-ySim);			
 		DZ->Fill(zRec-zSim);
+		DR->Fill(sqrt(pow((xRec-xSim),2)+pow((yRec-ySim),2)+pow((zRec-zSim),2)));
+		NSimRecSameDetId->Fill(nSimRecSameDetId);
+		if(verbose > 3)
+			cout<<"================================= END OF RECHITS ==============================="<<endl;
 	}
    }
+   if(verbose > 3)
+	cout<<"================================= END OF TRACKS ==============================="<<endl;
 }
 
 
@@ -189,6 +223,9 @@ RecHitAnalayzer::beginJob()
    DX = new TH1D("DX", "#Delta x",2000,-10,10);
    DY = new TH1D("DY", "#Delta y",2000,-10,10);
    DZ = new TH1D("DZ", "#Delta z",2000,-10,10);
+   DR = new TH1D("DD", "#Delta R",1000,0,10);
+   NSimRecSameDetId = new TH1D("NSimRecSameDetId","N (SimHit,RecHit)_{same detid}", 11, -5.5, 5.5);
+   Rfs = new TH1D("Rfs","Matched SiTrack2D position (R)", 2000, -10, 10);
 }
 
 // ------------ method called once each job just after ending the iEvent loop  ------------
@@ -200,6 +237,9 @@ RecHitAnalayzer::endJob()
    DX->Write();
    DY->Write();
    DZ->Write();
+   DR->Write();
+   NSimRecSameDetId->Write();
+   Rfs->Write();
    fout->Close();
 }
 
