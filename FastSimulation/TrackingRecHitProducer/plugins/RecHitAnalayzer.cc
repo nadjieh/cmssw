@@ -139,14 +139,16 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 	int iRechit = 0;
 	for(; itRecHit != rhEnd; itRecHit++){
 		if(!(*itRecHit)->isValid()) continue;
-		float xRec = (*itRecHit)->localPosition().x();
-                float yRec = (*itRecHit)->localPosition().y();
-                float zRec = (*itRecHit)->localPosition().z();
+		TrackingRecHit * tempHit = (*itRecHit)->clone();
+		float xRec = tempHit->localPosition().x();
+                float yRec = tempHit->localPosition().y();
+                float zRec = tempHit->localPosition().z();
 		if(verbose > 3)
 			std::cout<<"Track "<< iTrack<< " and RecHit "<<iRechit<<": "<<xRec <<"\t" << yRec <<"\t"<< zRec <<std::endl;
 		if(verbose > 3)
 			std::cout<<"Looking for detId ";
-		DetId detId = (*itRecHit)->geographicalId().rawId();
+		DetId detId = tempHit->geographicalId().rawId();
+		delete tempHit;
 		if(verbose > 3)
 			std::cout<<detId<<endl;
 		const PSimHit* simHit = NULL;
