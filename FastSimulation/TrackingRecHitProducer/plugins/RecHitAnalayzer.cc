@@ -165,7 +165,8 @@ class RecHitAnalayzer : public edm::EDAnalyzer {
 
       // ----------member data ---------------------------
       edm::ParameterSet iPset;
-      edm::InputTag track_label, simhit_label;
+      edm::InputTag track_label;
+      std::vector<edm::InputTag> simhit_label;
       int verbose;
       bool isFS;
       std::string fname;
@@ -193,7 +194,7 @@ class RecHitAnalayzer : public edm::EDAnalyzer {
 //
 RecHitAnalayzer::RecHitAnalayzer(const edm::ParameterSet& iConfig): iPset(iConfig), 
 	track_label( iPset.getParameter<edm::InputTag>("track_label")),
-	simhit_label( iPset.getParameter<edm::InputTag>("simhit_label")),
+	simhit_label( iPset.getParameter<std::vector<edm::InputTag> >("simhit_label")),
 	verbose( iPset.getParameter<int>("verbose")),
 	isFS( iPset.getParameter<bool>("isFastSimOnly")),
 	fname( iPset.getParameter<string>("outfile"))
@@ -219,113 +220,117 @@ RecHitAnalayzer::~RecHitAnalayzer()
 void
 RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-   using namespace edm;
-   using namespace std;
+  
+    using namespace edm;
+    using namespace std;
 
-   Handle<reco::TrackCollection> track_handle;
-   iEvent.getByLabel(track_label, track_handle);
+    Handle<reco::TrackCollection> track_handle;
+    iEvent.getByLabel(track_label, track_handle);
    
-   edm::Handle<PSimHitCollection> simhit_handle; 
-   iEvent.getByLabel(simhit_label, simhit_handle);  
+    edm::Handle<PSimHitCollection> simhit_handle; 
 
-   edm::ESHandle<TrackerTopology> tTopoHand;
-   iSetup.get<TrackerTopologyRcd>().get(tTopoHand);
-   const TrackerTopology *tTopo=tTopoHand.product();
+    edm::ESHandle<TrackerTopology> tTopoHand;
+    iSetup.get<TrackerTopologyRcd>().get(tTopoHand);
+    const TrackerTopology *tTopo=tTopoHand.product();
 
-   int iTrack = 0;
-   reco::TrackCollection::const_iterator itTrk = track_handle->begin();
-   reco::TrackCollection::const_iterator trkEnd = track_handle->end();
-   for(; itTrk != trkEnd; itTrk++){
-	trackingRecHit_iterator itRecHit = itTrk->recHitsBegin();
-    	trackingRecHit_iterator rhEnd = itTrk->recHitsEnd();
-	int iRechit = 0;
-	for(; itRecHit != rhEnd; itRecHit++){
-		if(!(*itRecHit)->isValid()) continue;
-		TrackingRecHit * tempHit = (*itRecHit)->clone();
-		float xRec = tempHit->localPosition().x();
-                float yRec = tempHit->localPosition().y();
-                float zRec = tempHit->localPosition().z();
-		float xxRecErr = tempHit->localPositionError().xx();
-                float xyRecErr = tempHit->localPositionError().xy();
-                float yyRecErr = tempHit->localPositionError().yy();
-		if(verbose > 3)
-			std::cout<<"Track "<< iTrack<< " and RecHit "<<iRechit<<": "<<xRec <<"\t" << yRec <<"\t"<< zRec <<std::endl;
-		if(verbose > 3)
-			std::cout<<"Looking for detId ";
-		DetId detId = tempHit->geographicalId().rawId();
-		delete tempHit;
-		
-//		if(verbose > 3)
-//			std::cout<<detId<<endl;
-		const PSimHit* simHit = NULL;
-		double minDR = 99999999;
-		PSimHitCollection::const_iterator itSimHit = simhit_handle->begin();
-		PSimHitCollection::const_iterator itSimHitEnd = simhit_handle->end();
-		if(verbose > 3)
-                        std::cout<<simhit_handle->size()<<endl;
-		int nSimRecSameDetId = 0;
-		for (; itSimHit!= itSimHitEnd; itSimHit++) {		
-//			if(verbose > 6)
-//				std::cout<<"comparing detID with unitId: "<<detId << " vs. "<<itSimHit->detUnitId()<<endl;
-			if (detId == itSimHit->detUnitId()){
-				nSimRecSameDetId++;
-				float xSim = itSimHit->localPosition().x();
-				float ySim = itSimHit->localPosition().y();
-				float zSim = itSimHit->localPosition().z();
-				if(verbose > 0)
-					cout<<"SimHit Coordinates: "<<xSim <<"\t"<<ySim<<"\t"<<zSim<<endl;
-				double DR = sqrt(pow((xRec-xSim),2)+pow((yRec-ySim),2)+pow((zRec-zSim),2));
-				if(verbose > 0)
-					cout<< "DR is "<<DR<<endl;
-				if(DR < minDR){
-					if(verbose > 0)
-	                                        cout<< "keep new simHit :-) "<<endl;
-					minDR = DR;
-					//simHit = new PSimHit(*itSimHit);
-					simHit = &(*itSimHit);
-				}
-			}
-		}    
+    int iTrack = 0;
+    reco::TrackCollection::const_iterator itTrk = track_handle->begin();
+    reco::TrackCollection::const_iterator trkEnd = track_handle->end();
+    for(; itTrk != trkEnd; itTrk++){
+      trackingRecHit_iterator itRecHit = itTrk->recHitsBegin();
+      trackingRecHit_iterator rhEnd = itTrk->recHitsEnd();
+      int iRechit = 0;
+      for(; itRecHit != rhEnd; itRecHit++){
+	if(!(*itRecHit)->isValid()) continue;
+	TrackingRecHit * tempHit = (*itRecHit)->clone();
+	float xRec = tempHit->localPosition().x();
+	float yRec = tempHit->localPosition().y();
+	float zRec = tempHit->localPosition().z();
+	float xxRecErr = tempHit->localPositionError().xx();
+	float xyRecErr = tempHit->localPositionError().xy();
+	float yyRecErr = tempHit->localPositionError().yy();
+	if(verbose > 3)
+	  std::cout<<"Track "<< iTrack<< " and RecHit "<<iRechit<<": "<<xRec <<"\t" << yRec <<"\t"<< zRec <<std::endl;
+	if(verbose > 3)
+	  std::cout<<"Looking for detId ";
+	DetId detId = tempHit->geographicalId().rawId();
+	delete tempHit;
+	double minDR = 99999999;
+	const PSimHit* simHit = NULL;
+        int nSimRecSameDetId = 0;
+        std::stringstream labelName;
+	TString SelectedLabel = "";
+	for(unsigned int iSimLabel = 0; iSimLabel < simhit_label.size(); iSimLabel++){
+	  labelName.str("");
+	  labelName << simhit_label[iSimLabel].instance();
+	  iEvent.getByLabel(simhit_label[iSimLabel], simhit_handle);  
+	  PSimHitCollection::const_iterator itSimHit = simhit_handle->begin();
+	  PSimHitCollection::const_iterator itSimHitEnd = simhit_handle->end();
+	  if(verbose > 3)
+	    std::cout<<simhit_handle->size()<<endl;
+	  for (; itSimHit!= itSimHitEnd; itSimHit++) {
+	    if (detId == itSimHit->detUnitId()){
+	      nSimRecSameDetId++;
+	      float xSim = itSimHit->localPosition().x();
+	      float ySim = itSimHit->localPosition().y();
+	      float zSim = itSimHit->localPosition().z();
+	      if(verbose > 0)
+		cout<<"SimHit Coordinates: "<<xSim <<"\t"<<ySim<<"\t"<<zSim<<endl;
+	      double DR = sqrt(pow((xRec-xSim),2)+pow((yRec-ySim),2)+pow((zRec-zSim),2));
+	      if(verbose > 0)
+		cout<< "DR is "<<DR<<endl;
+	      if(DR < minDR){
 		if(verbose > 0)
-			std::cout<<"After simHit loop, the closest simHit is: "<<simHit<<endl;
-		if(isFS){
-			const SiTrackerGSMatchedRecHit2D * rechit = (const SiTrackerGSMatchedRecHit2D*) (*itRecHit);
-			if(verbose > 0){
-				cout<<"From SiTrackerGSMatched:\n";
-				if(rechit->isMatched()) {
-					cout<<"\tThe RecHit is Matched with SimHit ======= "<<endl;
-					cout<<"position: "<<rechit->localPosition().x()<<"\t"<<rechit->localPosition().y()<<"\t"<<rechit->localPosition().z()<<endl;
-				} else  cout<<"\tThe RecHit is NOT Matched with SimHit"<<endl;
-			}
-			if(rechit->isMatched()){
-				Rfs->Fill(sqrt(pow(rechit->localPosition().x(),2)+pow(rechit->localPosition().y(),2)+pow(rechit->localPosition().z(),2)));
-			}
-		}
-		if(simHit == NULL)
-			continue;
-		if(verbose > 0)
-			std::cout<<"simHit coordinates are: ";
-		float xSim = simHit->localPosition().x();
-		float ySim = simHit->localPosition().y();
-		float zSim = simHit->localPosition().z();
-		if(verbose > 0)
-			std::cout<<xSim<<"\t"<<ySim<<"\t"<<zSim<<endl;
-		double dx = xRec-xSim;
-                double dy = yRec-ySim;
-                double dz = zRec-zSim;
-
-		//Layer definitions and ID
-        	unsigned int subDetId = DetId(simHit->detUnitId()).subdetId();				
-		detId = simHit->detUnitId();
-	        FillAuxilaryPlots(detId, subDetId, tTopo,dx,dy,dz,xxRecErr,xyRecErr,yyRecErr);
-		NSimRecSameDetId->Fill(nSimRecSameDetId);
-		if(verbose > 3)
-			cout<<"================================= END OF RECHITS ==============================="<<endl;
+		  cout<< "keep new simHit :-) "<<endl;
+		minDR = DR;
+		SelectedLabel = labelName.str().c_str();
+		simHit = &(*itSimHit);
+	      }
+	    }
+	  }
+	  if(verbose > 3)
+	    cout<<"================================= END OF SIMHIT COLLECTION ==============================="<<endl;
+	}    
+	if(verbose > 0)
+	  std::cout<<"After simHit loop, the closest simHit is: "<<simHit<<endl;
+	if(isFS){
+	  const SiTrackerGSMatchedRecHit2D * rechit = (const SiTrackerGSMatchedRecHit2D*) (*itRecHit);
+	  if(verbose > 0){
+	    cout<<"From SiTrackerGSMatched:\n";
+	    if(rechit->isMatched()) {
+	      cout<<"\tThe RecHit is Matched with SimHit ======= "<<endl;
+	      cout<<"position: "<<rechit->localPosition().x()<<"\t"<<rechit->localPosition().y()<<"\t"<<rechit->localPosition().z()<<endl;
+	    } else  cout<<"\tThe RecHit is NOT Matched with SimHit"<<endl;
+	  }
+	  if(rechit->isMatched()){
+	    Rfs->Fill(sqrt(pow(rechit->localPosition().x(),2)+pow(rechit->localPosition().y(),2)+pow(rechit->localPosition().z(),2)));
+	  }
 	}
-   }
-   if(verbose > 3)
-	cout<<"================================= END OF TRACKS ==============================="<<endl;
-}
+	if(simHit == NULL)
+	  continue;
+	if(verbose > 0)
+	  std::cout<<"simHit coordinates are: ";
+	float xSim = simHit->localPosition().x();
+	float ySim = simHit->localPosition().y();
+	float zSim = simHit->localPosition().z();
+	if(verbose > 0)
+	  std::cout<<xSim<<"\t"<<ySim<<"\t"<<zSim<<endl;
+	double dx = xRec-xSim;
+	double dy = yRec-ySim;
+	double dz = zRec-zSim;
+	//Layer definitions and ID
+	unsigned int subDetId = DetId(simHit->detUnitId()).subdetId();
+	detId = simHit->detUnitId();
+	//cout<<"DetId: " <<detId.rawId()<< ", subDetId: "<<subDetId<<", label name: "<<SelectedLabel<<endl;
+        FillAuxilaryPlots(detId, subDetId, tTopo,dx,dy,dz,xxRecErr,xyRecErr,yyRecErr);
+	NSimRecSameDetId->Fill(nSimRecSameDetId);
+	if(verbose > 3)
+	  cout<<"================================= END OF RECHITS ==============================="<<endl;
+      }
+    }
+    if(verbose > 3)
+      cout<<"================================= END OF TRACKS ==============================="<<endl;
+  }
 
 
 // ------------ method called once each job just before starting iEvent loop  ------------
