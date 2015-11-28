@@ -65,13 +65,13 @@ using namespace std;
 class AuxilaryPlots{
 public:
       AuxilaryPlots(TString name_): name(name_){
-	DX = new TH1D("DX", "#Delta x",200,-0.1,0.1);
+	DX = new TH1D("DX", "#Delta x",200,-0.02,0.2);
 	DY = new TH1D("DYWide", "#Delta y",2000,-10,10);
-	DYLR = new TH1D("DY", "#Delta y",200,-0.1,0.1);
+	DYLR = new TH1D("DY", "#Delta y",200,-0.02,0.02);
 	DZ = new TH1D("DZ", "#Delta z",200,-0.01,0.01);
-	recErrXX = new TH1D("recXX", "xx",200,-0.1,0.1);
-	recErrXY = new TH1D("recXY", "xy",200,-0.1,0.1);
-	recErrYY = new TH1D("recYY", "yy",200,-0.1,0.1);
+	recErrXX = new TH1D("recXX", "xx",200,-0.02,0.02);
+	recErrXY = new TH1D("recXY", "xy",200,-0.02,0.02);
+	recErrYY = new TH1D("recYY", "yy",200,-0.02,0.02);
       }
       void Fill(double dx, double dy, double dz){
 	DX->Fill(dx);
@@ -224,10 +224,12 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     using namespace edm;
     using namespace std;
 
+   if (verbose > 4)
+	cout<<">>>>>>>>>>>>>>>>>>> Begining of the event loop"<<endl;
+
     Handle<reco::TrackCollection> track_handle;
     iEvent.getByLabel(track_label, track_handle);
    
-    edm::Handle<PSimHitCollection> simhit_handle; 
 
     edm::ESHandle<TrackerTopology> tTopoHand;
     iSetup.get<TrackerTopologyRcd>().get(tTopoHand);
@@ -236,12 +238,18 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
     int iTrack = 0;
     reco::TrackCollection::const_iterator itTrk = track_handle->begin();
     reco::TrackCollection::const_iterator trkEnd = track_handle->end();
+    if (verbose > 4)
+	cout<<">>>>>>>>>>>>>>>>>>> Begining of the track loop"<<endl;
     for(; itTrk != trkEnd; itTrk++){
       trackingRecHit_iterator itRecHit = itTrk->recHitsBegin();
       trackingRecHit_iterator rhEnd = itTrk->recHitsEnd();
       int iRechit = 0;
+      if (verbose > 4)
+	cout<<">>>>>>>>>>>>>>>>>>> Begining of the recHit loop"<<endl;
       for(; itRecHit != rhEnd; itRecHit++){
 	if(!(*itRecHit)->isValid()) continue;
+	if(verbose > 3)
+          std::cout<<"Track "<< iTrack<< " and RecHit "<<iRechit<<": "<<(*itRecHit)->localPosition().x() <<"\t" << (*itRecHit)->localPosition().y() <<"\t"<< (*itRecHit)->localPosition().z() <<std::endl;
 	TrackingRecHit * tempHit = (*itRecHit)->clone();
 	float xRec = tempHit->localPosition().x();
 	float yRec = tempHit->localPosition().y();
@@ -260,14 +268,21 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
         int nSimRecSameDetId = 0;
         std::stringstream labelName;
 	TString SelectedLabel = "";
+	if (verbose > 4)
+	    cout<<">>>>>>>>>>>>>>>>>>> Begining of the simHit collections loop"<<endl;
 	for(unsigned int iSimLabel = 0; iSimLabel < simhit_label.size(); iSimLabel++){
 	  labelName.str("");
 	  labelName << simhit_label[iSimLabel].instance();
+          edm::Handle<PSimHitCollection> simhit_handle; 
 	  iEvent.getByLabel(simhit_label[iSimLabel], simhit_handle);  
 	  PSimHitCollection::const_iterator itSimHit = simhit_handle->begin();
 	  PSimHitCollection::const_iterator itSimHitEnd = simhit_handle->end();
 	  if(verbose > 3)
 	    std::cout<<simhit_handle->size()<<endl;
+	  if(verbose > 0)
+		cout<<">>> Subdetector name: "<<labelName.str()<<endl;
+	  if (verbose > 4)
+	    cout<<">>>>>>>>>>>>>>>>>>> Begining of the simHit loop named "<<labelName.str()<<endl;
 	  for (; itSimHit!= itSimHitEnd; itSimHit++) {
 	    if (detId == itSimHit->detUnitId()){
 	      nSimRecSameDetId++;
@@ -289,8 +304,10 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 	    }
 	  }
 	  if(verbose > 3)
-	    cout<<"================================= END OF SIMHIT COLLECTION ==============================="<<endl;
-	}    
+	    cout<<"================================= END OF SIMHIT LOOP NAMED "<<labelName.str()<<" ==============================="<<endl;
+	}
+	if(verbose > 3)
+            cout<<"================================= END OF SIMHIT LOOP COLLECTION ==============================="<<endl;    
 	if(verbose > 0)
 	  std::cout<<"After simHit loop, the closest simHit is: "<<simHit<<endl;
 	if(isFS){
@@ -318,15 +335,17 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 	double dx = xRec-xSim;
 	double dy = yRec-ySim;
 	double dz = zRec-zSim;
+	if(verbose > 0)
+	  std::cout<<dx<<"\t"<<dy<<"\t"<<dz<<endl;
 	//Layer definitions and ID
 	unsigned int subDetId = DetId(simHit->detUnitId()).subdetId();
 	detId = simHit->detUnitId();
-	//cout<<"DetId: " <<detId.rawId()<< ", subDetId: "<<subDetId<<", label name: "<<SelectedLabel<<endl;
         FillAuxilaryPlots(detId, subDetId, tTopo,dx,dy,dz,xxRecErr,xyRecErr,yyRecErr);
 	NSimRecSameDetId->Fill(nSimRecSameDetId);
-	if(verbose > 3)
-	  cout<<"================================= END OF RECHITS ==============================="<<endl;
+	iRechit++;
       }
+      if(verbose > 3)
+	cout<<"================================= END OF RECHITS ==============================="<<endl;
     }
     if(verbose > 3)
       cout<<"================================= END OF TRACKS ==============================="<<endl;
