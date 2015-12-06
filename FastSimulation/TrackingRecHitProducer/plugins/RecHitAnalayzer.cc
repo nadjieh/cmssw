@@ -52,6 +52,8 @@
 #include "TH1.h"
 #include "TString.h"
 #include "TDirectory.h"
+#include "TCanvas.h"
+#include "TStyle.h"
 
 //C++
 #include <vector>
@@ -64,14 +66,48 @@ using namespace std;
 //
 class AuxilaryPlots{
 public:
-      AuxilaryPlots(TString name_): name(name_){
-	DX = new TH1D("DX", "#Delta x",200,-0.02,0.2);
-	DY = new TH1D("DYWide", "#Delta y",2000,-10,10);
-	DYLR = new TH1D("DY", "#Delta y",200,-0.02,0.02);
-	DZ = new TH1D("DZ", "#Delta z",200,-0.01,0.01);
-	recErrXX = new TH1D("recXX", "xx",200,-0.02,0.02);
-	recErrXY = new TH1D("recXY", "xy",200,-0.02,0.02);
-	recErrYY = new TH1D("recYY", "yy",200,-0.02,0.02);
+      AuxilaryPlots(TString name_,  bool isFS = true, int nBinYW = 125, int nBinZ = 200, int nBinX = 200, int nBinY = 200): name(name_){
+	DX = new TH1D("DX", "#Delta x",nBinX,-0.02,0.02);
+	DY = new TH1D("DYWide", "#Delta y",nBinYW,-10,10);
+	DYLR = new TH1D("DY", "#Delta y",nBinY,-0.02,0.02);
+	DZ = new TH1D("DZ", "#Delta z",nBinZ,-0.00002,0.00002);
+	const double nBin = 125.;
+	if(isFS){
+		recErrXX = new TH1D("recXX", "xx",nBin,0,0.02);
+		recErrXY = new TH1D("recXY", "xy",nBin,-0.01,0.01);
+		recErrYY = new TH1D("recYY", "yy",nBin,0,0.02);
+	} else {
+		double xxL = 0, xxH = 0, xyL = 0, xyH = 0;
+		if(name.Contains("TIB")){
+			xxL = 0.;
+			xxH = 0.02;
+			xyL = -0.01;
+			xyH = 0.01;
+		} else if(name.Contains("TID")){
+			xxL = 0.;
+			xxH = 0.5;
+			xyL = 0;
+			xyH = 3;
+		} else if(name.Contains("TOB")){
+                        xxL = 0.;
+                        xxH = 0.2;
+                        xyL = -0.01;
+                        xyH = 0.01;
+                } else if(name.Contains("TEC")){
+                        xxL = 0.;
+                        xxH = 0.5;
+                        xyL = 0;
+                        xyH = 3;
+                } else {
+                        xxL = 0.;
+                        xxH = 0.02;
+                        xyL = -0.01;
+                        xyH = 0.01;
+		}
+		recErrXX = new TH1D("recXX", "xx",nBin,xxL,xxH);
+		recErrXY = new TH1D("recXY", "xy",nBin,xyL,xyH);
+		recErrYY = new TH1D("recYY", "yy",100,0,1);
+	}
       }
       void Fill(double dx, double dy, double dz){
 	DX->Fill(dx);
@@ -88,6 +124,38 @@ public:
 	f->cd();
 	TDirectory * dir = f->mkdir(name); 
 	dir->cd();
+	TCanvas C(name, name,65,106,650,634);
+	gStyle->SetOptFit(1);
+	gStyle->SetOptStat(0);
+	gStyle->SetOptTitle(0);
+	C.Range(17.40968,-8.734181,66.40232,63.92405);
+	C.SetFillColor(0);
+	C.SetBorderMode(0);
+	C.SetBorderSize(2);
+	C.SetLeftMargin(0.1517028);
+	C.SetRightMargin(0.03560372);
+	C.SetTopMargin(0.05400697);
+	C.SetBottomMargin(0.1202091);
+	C.SetFrameFillStyle(0);
+	C.SetFrameBorderMode(0);
+	C.SetFrameFillStyle(0);
+	C.SetFrameBorderMode(0);
+	C.Divide(4,2);
+	C.cd(1);
+	DX->Draw();
+	C.cd(2);
+	DYLR->Draw();
+	C.cd(3);
+	DZ->Draw();
+	C.cd(4);
+	recErrXX->Draw();
+	C.cd(5);
+	recErrXY->Draw();
+	C.cd(6);
+	recErrYY->Draw();
+	C.cd(7);
+	DY->Draw();
+	C.Write();
         DX->Write();
         DY->Write();
         DYLR->Write();
@@ -111,12 +179,12 @@ private:
 };
 class SubDetLayersHistograms{
 public:
-	SubDetLayersHistograms(TString name_, unsigned int n): name(name_),nLayer(n){
+	SubDetLayersHistograms(TString name_, unsigned int n, bool isFS,int nBinYW = 125, int nBinZ = 2000, int nBinX = 200, int nBinY = 200): name(name_),nLayer(n){
 		stringstream s;
 		for(unsigned int i = 0; i < nLayer; i++){
 			s.str("");
 			s << name <<"_"<<i+1;
-			layerPlots.push_back(new AuxilaryPlots(s.str().c_str()));		
+			layerPlots.push_back(new AuxilaryPlots(s.str().c_str(), isFS, nBinYW, nBinZ, nBinX, nBinY));		
 		}
 	}
 	~SubDetLayersHistograms(){}
@@ -356,12 +424,12 @@ RecHitAnalayzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup
 void 
 RecHitAnalayzer::beginJob()
 {
-   PixleBarrel = new SubDetLayersHistograms("PixleBarrel",3);
-   PixleFwd = new SubDetLayersHistograms("PixleFwd",2);
-   TIB = new SubDetLayersHistograms("TIB", 4);
-   TID = new SubDetLayersHistograms("TID",3);
-   TOB = new SubDetLayersHistograms("TOB",6);
-   TEC = new SubDetLayersHistograms("TEC",7);
+   PixleBarrel = new SubDetLayersHistograms("PixelBarrel",3, isFS);
+   PixleFwd = new SubDetLayersHistograms("PixelFwd",2, isFS);
+   TIB = new SubDetLayersHistograms("TIB", 4, isFS);
+   TID = new SubDetLayersHistograms("TID",3, isFS);
+   TOB = new SubDetLayersHistograms("TOB",6, isFS);
+   TEC = new SubDetLayersHistograms("TEC",7, isFS);
    NSimRecSameDetId = new TH1D("NSimRecSameDetId","N (SimHit,RecHit)_{same detid}", 11, -5.5, 5.5);
    Rfs = new TH1D("Rfs","Matched SiTrack2D position (R)", 2000, -10, 10);
 }
@@ -378,6 +446,7 @@ RecHitAnalayzer::endJob()
    TID->Write(fout);
    TOB->Write(fout);
    TEC->Write(fout);
+   fout->cd();  
    NSimRecSameDetId->Write();
    Rfs->Write();
    fout->Close();
