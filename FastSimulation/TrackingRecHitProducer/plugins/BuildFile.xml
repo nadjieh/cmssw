@@ -32,4 +32,6 @@
 <use   name="boost"/>
 <use   name="clhep"/>
 <use   name="gsl"/>
+<use   name="root"/>
+<use name="rootgraphics"/>
 <flags EDM_PLUGIN="1"/>
