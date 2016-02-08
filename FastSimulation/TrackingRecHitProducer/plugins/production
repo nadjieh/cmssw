@@ -1,0 +1,4 @@
+the cmsDriver commands to generate fullsim muon gun RelVal samples,
+100 GeV, are spit out by the following command:
+runTheMatrix.py -e -n -l 1321
+you would need the first 3 commands
